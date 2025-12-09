@@ -1011,14 +1011,30 @@ class ReservoirAnalysisApp:
         print(f"✓ Canvas widget size: {canvas_widget.winfo_width()}x{canvas_widget.winfo_height()}")
         print("="*70 + "\n")
 
-    def open_dashboard_window(self):
-        """Open the comprehensive dashboard in a dedicated window."""
+        # Always surface a popup view so macOS users can see the chart even if
+        # the embedded canvas is clipped or hidden behind other windows.
+        self.open_dashboard_window(auto_launch=True)
+
+    def open_dashboard_window(self, auto_launch: bool = False):
+        """Open the comprehensive dashboard in a dedicated window.
+
+        Args:
+            auto_launch: When True, always bring the popup to the front after
+                regenerating the dashboard so the user immediately sees the
+                chart even if the embedded canvas is clipped or hidden.
+        """
         if not self.last_plot_args:
             messagebox.showinfo("Dashboard", "Run a calculation first to generate the dashboard.")
             return
 
         # Close any previous popup to avoid multiple windows
         if self.popup_window and tk.Toplevel.winfo_exists(self.popup_window):
+            # When auto-launching, reuse the same window to avoid focus-stealing
+            # loops; otherwise start fresh when opened manually.
+            if auto_launch:
+                self.popup_window.lift()
+                self.popup_window.focus_force()
+                return
             self.popup_window.destroy()
 
         self.popup_window = tk.Toplevel(self.root)
@@ -1039,6 +1055,12 @@ class ReservoirAnalysisApp:
         # Keep references so the popup remains responsive
         self.popup_canvas = popup_canvas
         self.popup_toolbar = popup_toolbar
+
+        # Make sure the popup is visible above other windows
+        self.popup_window.lift()
+        self.popup_window.focus_force()
+        self.popup_window.after(0, lambda: self.popup_window.attributes("-topmost", True))
+        self.popup_window.after(200, lambda: self.popup_window.attributes("-topmost", False))
 
 
 # ============================================================================
