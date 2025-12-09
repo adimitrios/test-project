@@ -589,9 +589,10 @@ class ReservoirAnalysisApp:
         """Initialize the application."""
         self.root = root
         self.root.title("Reservoir Analysis Tool - Professional Edition")
-        self.root.geometry("1600x1200")  # Increased height for better dashboard visibility
-        # Guarantee enough vertical space for the dashboard to be visible on load
-        self.root.minsize(1400, 900)
+        # Default to a height that fits on 1080p displays while keeping content roomy
+        self.root.geometry("1400x950")
+        # Allow smaller screens while keeping the layout usable
+        self.root.minsize(1200, 800)
 
         # Configure style
         self.setup_styles()
@@ -638,13 +639,39 @@ class ReservoirAnalysisApp:
 
     def create_gui(self):
         """Build the complete GUI layout."""
-        # Main container with padding
-        main_frame = ttk.Frame(self.root, padding="20")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Configure grid weights
+        # Root-level scrollable canvas so the entire UI can be accessed on smaller screens
         self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=0)
         self.root.rowconfigure(0, weight=1)
+
+        self.root_canvas = tk.Canvas(self.root, highlightthickness=0)
+        root_scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.root_canvas.yview)
+        self.root_canvas.configure(yscrollcommand=root_scrollbar.set)
+
+        self.root_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+        root_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+
+        # Main container with padding inside the scrollable canvas
+        main_frame = ttk.Frame(self.root_canvas, padding="20")
+        main_window = self.root_canvas.create_window((0, 0), window=main_frame, anchor="nw")
+
+        def resize_root_canvas(event):
+            self.root_canvas.itemconfigure(main_window, width=event.width)
+
+        def update_root_scrollregion(event=None):
+            self.root_canvas.configure(scrollregion=self.root_canvas.bbox("all"))
+
+        self.root_canvas.bind("<Configure>", resize_root_canvas)
+        main_frame.bind("<Configure>", update_root_scrollregion)
+
+        def on_root_mousewheel(event):
+            delta = -1 * int(event.delta / 120) if event.delta else 1 if event.num == 5 else -1
+            self.root_canvas.yview_scroll(delta, "units")
+
+        for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            self.root_canvas.bind(sequence, on_root_mousewheel)
+
+        # Configure grid weights for the scrollable content
         main_frame.columnconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         # Let the dashboard row stretch so the canvas is always visible
@@ -841,9 +868,10 @@ class ReservoirAnalysisApp:
             delta = -1 * int(event.delta / 120) if event.delta else 1 if event.num == 5 else -1
             canvas_container.yview_scroll(delta, "units")
 
-        canvas_container.bind_all("<MouseWheel>", _on_mousewheel)
-        canvas_container.bind_all("<Button-4>", _on_mousewheel)
-        canvas_container.bind_all("<Button-5>", _on_mousewheel)
+        for widget in (canvas_container, self.plot_frame):
+            widget.bind("<MouseWheel>", _on_mousewheel)
+            widget.bind("<Button-4>", _on_mousewheel)
+            widget.bind("<Button-5>", _on_mousewheel)
         self.canvas_container = canvas_container
 
         # Optional: open dashboard in a separate window if the embedded view is clipped
