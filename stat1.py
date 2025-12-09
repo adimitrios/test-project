@@ -784,11 +784,24 @@ class ReservoirAnalysisApp:
 
         # Configure the outer frame to expand
         outer_frame.columnconfigure(0, weight=1)
-        outer_frame.rowconfigure(0, weight=1)
+        outer_frame.rowconfigure(1, weight=1)
+
+        # Helper note so users know where the scrollable dashboard lives
+        helper = ttk.Label(
+            outer_frame,
+            text=(
+                "Scroll inside this panel to view the dashboard and toolbar. "
+                "Use the right-side scrollbar if the figure is taller than the window."
+            ),
+            style='Input.TLabel',
+            wraplength=1200,
+            justify=tk.LEFT,
+        )
+        helper.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 8))
 
         # Create canvas with scrollbar
         # Give the canvas a reasonable starting height so the dashboard is visible
-        canvas_container = tk.Canvas(outer_frame, bg='white', height=700)
+        canvas_container = tk.Canvas(outer_frame, bg='white', height=720)
         scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=canvas_container.yview)
 
         # Create the frame that will hold the plots
@@ -798,8 +811,8 @@ class ReservoirAnalysisApp:
         canvas_container.configure(yscrollcommand=scrollbar.set)
 
         # Grid layout
-        canvas_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        canvas_container.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
 
         # Create window in canvas and keep the embedded frame width synced
         plot_window = canvas_container.create_window((0, 0), window=self.plot_frame, anchor="nw")
@@ -813,6 +826,15 @@ class ReservoirAnalysisApp:
             canvas_container.configure(scrollregion=canvas_container.bbox("all"))
 
         self.plot_frame.bind("<Configure>", on_frame_configure)
+
+        # Mouse wheel scrolling (Windows/macOS and Linux/X11)
+        def _on_mousewheel(event):
+            delta = -1 * int(event.delta / 120) if event.delta else 1 if event.num == 5 else -1
+            canvas_container.yview_scroll(delta, "units")
+
+        canvas_container.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas_container.bind_all("<Button-4>", _on_mousewheel)
+        canvas_container.bind_all("<Button-5>", _on_mousewheel)
         self.canvas_container = canvas_container
 
     def get_efficiency_color(self, eff: float) -> str:
@@ -952,6 +974,7 @@ class ReservoirAnalysisApp:
         # Force update of scroll region
         self.plot_frame.update_idletasks()
         self.canvas_container.configure(scrollregion=self.canvas_container.bbox("all"))
+        self.canvas_container.yview_moveto(0)
 
         # Force window update
         self.root.update_idletasks()
