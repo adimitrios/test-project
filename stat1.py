@@ -905,9 +905,12 @@ class ReservoirAnalysisApp:
         print("GENERATING COMPREHENSIVE DASHBOARD")
         print("="*70)
 
-        # Clear previous plots
+        # Clear previous plots and close previous figure to avoid memory leaks
         for widget in self.plot_frame.winfo_children():
             widget.destroy()
+        if hasattr(self, 'current_fig') and self.current_fig is not None:
+            plt.close(self.current_fig)
+            self.current_fig = None
 
         # Generate comprehensive dashboard
         print("Creating dashboard figure...")
@@ -930,6 +933,12 @@ class ReservoirAnalysisApp:
         # Add canvas widget
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Keep references so the canvas is not garbage collected (which would
+        # leave the plot area blank)
+        self.current_fig = fig
+        self.current_canvas = canvas
+        self.current_toolbar = toolbar
 
         # Force update of scroll region
         self.plot_frame.update_idletasks()
