@@ -585,6 +585,8 @@ class ReservoirAnalysisApp:
         self.root = root
         self.root.title("Reservoir Analysis Tool - Professional Edition")
         self.root.geometry("1600x1200")  # Increased height for better dashboard visibility
+        # Guarantee enough vertical space for the dashboard to be visible on load
+        self.root.minsize(1400, 900)
 
         # Configure style
         self.setup_styles()
@@ -637,7 +639,7 @@ class ReservoirAnalysisApp:
         main_frame.columnconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         # Let the dashboard row stretch so the canvas is always visible
-        main_frame.rowconfigure(11, weight=1)
+        main_frame.rowconfigure(11, weight=1, minsize=750)
 
         # Title
         title = ttk.Label(main_frame,
@@ -799,8 +801,12 @@ class ReservoirAnalysisApp:
         canvas_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
 
-        # Create window in canvas
-        canvas_container.create_window((0, 0), window=self.plot_frame, anchor="nw")
+        # Create window in canvas and keep the embedded frame width synced
+        plot_window = canvas_container.create_window((0, 0), window=self.plot_frame, anchor="nw")
+        canvas_container.bind(
+            "<Configure>",
+            lambda event: canvas_container.itemconfigure(plot_window, width=event.width)
+        )
 
         # Update scrollregion when frame size changes
         def on_frame_configure(event=None):
