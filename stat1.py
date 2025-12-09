@@ -56,7 +56,7 @@ class InputRanges:
 class PlotConfig:
     """Configuration for plot visualization."""
     FIGSIZE: Tuple[int, int] = (16, 4)
-    FIGSIZE_FULL: Tuple[int, int] = (18, 12)
+    FIGSIZE_FULL: Tuple[int, int] = (14, 9)  # Reduced to fit in window
     DPI: int = 100
     MAIN_COLOR: str = '#2E86AB'
     POINT_COLOR: str = '#A23B72'
@@ -583,7 +583,7 @@ class ReservoirAnalysisApp:
         """Initialize the application."""
         self.root = root
         self.root.title("Reservoir Analysis Tool - Professional Edition")
-        self.root.geometry("1600x1000")
+        self.root.geometry("1600x1200")  # Increased height for better dashboard visibility
 
         # Configure style
         self.setup_styles()
@@ -871,25 +871,38 @@ class ReservoirAnalysisApp:
                     discrete_outputs: List[float],
                     eff1: float, eff2: float, eff: float):
         """Update the plot display with comprehensive dashboard."""
+        print("\n" + "="*70)
+        print("GENERATING COMPREHENSIVE DASHBOARD")
+        print("="*70)
+
         # Clear previous plots
         for widget in self.plot_frame.winfo_children():
             widget.destroy()
 
         # Generate comprehensive dashboard
+        print("Creating dashboard figure...")
         fig = ReservoirVisualizer.create_comprehensive_dashboard(
             continuous_values, continuous_outputs, discrete_outputs,
             eff1, eff2, eff
         )
+        print(f"✓ Dashboard created: {fig.get_figwidth()}x{fig.get_figheight()} inches at {fig.dpi} DPI")
 
         # Embed in tkinter
+        print("Embedding dashboard in GUI...")
         canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
         canvas.draw()
-        canvas_widget = canvas.get_tk_widget()
-        canvas_widget.pack(fill=tk.BOTH, expand=True)
 
-        # Add toolbar
+        # Add toolbar first
         toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
         toolbar.update()
+        toolbar.pack(side=tk.TOP, fill=tk.X)
+
+        # Then add canvas
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        print("✓ Dashboard embedded successfully!")
+        print("="*70 + "\n")
 
 
 # ============================================================================
