@@ -636,6 +636,8 @@ class ReservoirAnalysisApp:
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
+        # Let the dashboard row stretch so the canvas is always visible
+        main_frame.rowconfigure(11, weight=1)
 
         # Title
         title = ttk.Label(main_frame,
@@ -783,7 +785,8 @@ class ReservoirAnalysisApp:
         outer_frame.rowconfigure(0, weight=1)
 
         # Create canvas with scrollbar
-        canvas_container = tk.Canvas(outer_frame, bg='white')
+        # Give the canvas a reasonable starting height so the dashboard is visible
+        canvas_container = tk.Canvas(outer_frame, bg='white', height=700)
         scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=canvas_container.yview)
 
         # Create the frame that will hold the plots
