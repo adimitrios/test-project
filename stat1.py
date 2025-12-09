@@ -13,6 +13,11 @@ from tkinter import ttk, messagebox
 from typing import Dict, List, Tuple, Callable
 from dataclasses import dataclass
 import numpy as np
+import matplotlib
+
+# Ensure the Tkinter-embedded plots use the TkAgg backend so figures render on macOS
+# and other platforms where the default backend may not integrate with Tk.
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
@@ -595,6 +600,10 @@ class ReservoirAnalysisApp:
         self.continuous_entries = {}
         self.discrete_vars = {}
         self.result_labels = {}
+        self.last_plot_args = None
+        self.popup_window = None
+        self.popup_canvas = None
+        self.popup_toolbar = None
 
         # Build GUI
         self.create_gui()
@@ -837,6 +846,15 @@ class ReservoirAnalysisApp:
         canvas_container.bind_all("<Button-5>", _on_mousewheel)
         self.canvas_container = canvas_container
 
+        # Optional: open dashboard in a separate window if the embedded view is clipped
+        self.popup_btn = ttk.Button(
+            outer_frame,
+            text="Open Dashboard in Separate Window",
+            command=self.open_dashboard_window,
+            state=tk.DISABLED,
+        )
+        self.popup_btn.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+
     def get_efficiency_color(self, eff: float) -> str:
         """Return color based on efficiency value."""
         if eff >= 80:
@@ -970,6 +988,15 @@ class ReservoirAnalysisApp:
         self.current_fig = fig
         self.current_canvas = canvas
         self.current_toolbar = toolbar
+        self.last_plot_args = (
+            continuous_values,
+            continuous_outputs,
+            discrete_outputs,
+            eff1,
+            eff2,
+            eff,
+        )
+        self.popup_btn.state(["!disabled"])
 
         # Force update of scroll region
         self.plot_frame.update_idletasks()
@@ -983,6 +1010,35 @@ class ReservoirAnalysisApp:
         print(f"✓ Plot frame size: {self.plot_frame.winfo_width()}x{self.plot_frame.winfo_height()}")
         print(f"✓ Canvas widget size: {canvas_widget.winfo_width()}x{canvas_widget.winfo_height()}")
         print("="*70 + "\n")
+
+    def open_dashboard_window(self):
+        """Open the comprehensive dashboard in a dedicated window."""
+        if not self.last_plot_args:
+            messagebox.showinfo("Dashboard", "Run a calculation first to generate the dashboard.")
+            return
+
+        # Close any previous popup to avoid multiple windows
+        if self.popup_window and tk.Toplevel.winfo_exists(self.popup_window):
+            self.popup_window.destroy()
+
+        self.popup_window = tk.Toplevel(self.root)
+        self.popup_window.title("Reservoir Dashboard - Full View")
+        self.popup_window.geometry("1400x1000")
+
+        frame = ttk.Frame(self.popup_window)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        fig = ReservoirVisualizer.create_comprehensive_dashboard(*self.last_plot_args)
+        popup_canvas = FigureCanvasTkAgg(fig, master=frame)
+        popup_canvas.draw()
+        popup_toolbar = NavigationToolbar2Tk(popup_canvas, frame)
+        popup_toolbar.update()
+        popup_toolbar.pack(side=tk.TOP, fill=tk.X)
+        popup_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Keep references so the popup remains responsive
+        self.popup_canvas = popup_canvas
+        self.popup_toolbar = popup_toolbar
 
 
 # ============================================================================
