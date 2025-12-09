@@ -231,7 +231,8 @@ class ReservoirVisualizer:
 
         # Create figure with complex grid layout
         fig = plt.figure(figsize=PLOT_CFG.FIGSIZE_FULL, dpi=PLOT_CFG.DPI)
-        gs = fig.add_gridspec(3, 4, hspace=0.4, wspace=0.3)
+        gs = fig.add_gridspec(3, 4, hspace=0.45, wspace=0.35,
+                             top=0.94, bottom=0.05, left=0.05, right=0.98)
 
         # Main title
         fig.suptitle('Comprehensive Reservoir Analysis Dashboard',
@@ -395,7 +396,7 @@ class ReservoirVisualizer:
                         f'{val:.2f}%', ha='center', va='bottom' if height >= 0 else 'top',
                         fontsize=9, fontweight='bold')
 
-        plt.tight_layout()
+        # Note: tight_layout not needed as we use gridspec with explicit spacing
         return fig
 
     @staticmethod
@@ -768,13 +769,42 @@ class ReservoirAnalysisApp:
         self.result_labels['eff'] = eff_lbl
 
     def create_plots_section(self, parent):
-        """Create section for plots."""
-        self.plot_frame = ttk.LabelFrame(parent,
-                                        text="Comprehensive Analysis Dashboard",
-                                        padding="10")
-        self.plot_frame.grid(row=11, column=0, columnspan=2,
-                            sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        """Create section for plots with scrollbar support."""
+        # Create outer frame
+        outer_frame = ttk.LabelFrame(parent,
+                                     text="Comprehensive Analysis Dashboard",
+                                     padding="10")
+        outer_frame.grid(row=11, column=0, columnspan=2,
+                        sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
         parent.rowconfigure(11, weight=1)
+
+        # Configure the outer frame to expand
+        outer_frame.columnconfigure(0, weight=1)
+        outer_frame.rowconfigure(0, weight=1)
+
+        # Create canvas with scrollbar
+        canvas_container = tk.Canvas(outer_frame, bg='white')
+        scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=canvas_container.yview)
+
+        # Create the frame that will hold the plots
+        self.plot_frame = ttk.Frame(canvas_container)
+
+        # Configure canvas scrolling
+        canvas_container.configure(yscrollcommand=scrollbar.set)
+
+        # Grid layout
+        canvas_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+
+        # Create window in canvas
+        canvas_container.create_window((0, 0), window=self.plot_frame, anchor="nw")
+
+        # Update scrollregion when frame size changes
+        def on_frame_configure(event=None):
+            canvas_container.configure(scrollregion=canvas_container.bbox("all"))
+
+        self.plot_frame.bind("<Configure>", on_frame_configure)
+        self.canvas_container = canvas_container
 
     def get_efficiency_color(self, eff: float) -> str:
         """Return color based on efficiency value."""
@@ -892,16 +922,25 @@ class ReservoirAnalysisApp:
         canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
         canvas.draw()
 
-        # Add toolbar first
+        # Add toolbar
         toolbar = NavigationToolbar2Tk(canvas, self.plot_frame)
         toolbar.update()
         toolbar.pack(side=tk.TOP, fill=tk.X)
 
-        # Then add canvas
+        # Add canvas widget
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+        # Force update of scroll region
+        self.plot_frame.update_idletasks()
+        self.canvas_container.configure(scrollregion=self.canvas_container.bbox("all"))
+
+        # Force window update
+        self.root.update_idletasks()
+
         print("✓ Dashboard embedded successfully!")
+        print(f"✓ Plot frame size: {self.plot_frame.winfo_width()}x{self.plot_frame.winfo_height()}")
+        print(f"✓ Canvas widget size: {canvas_widget.winfo_width()}x{canvas_widget.winfo_height()}")
         print("="*70 + "\n")
 
 
